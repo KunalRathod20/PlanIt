@@ -13,7 +13,7 @@ const UserDashboard = () => {
       try {
         const token = user?.jwtToken;
         const response = await api.get("/events", {
-          headers: { Authorization: `Bearer ${token}` }, // Corrected string interpolation
+          headers: { Authorization: `Bearer ${token}` }, 
         });
         setEvents(response.data);
       } catch (error) {
