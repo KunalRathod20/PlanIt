@@ -55,6 +55,8 @@ const EventDetails = () => {
     }
   };
 
+
+  //Redirect to google maps
   const openGoogleMaps = () => {
     if (event?.location?.address) {
       const query = encodeURIComponent(event.location.address);
