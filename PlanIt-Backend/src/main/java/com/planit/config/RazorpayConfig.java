@@ -14,6 +14,6 @@ public class RazorpayConfig {
     public RazorpayClient razorpayClient(
             @Value("${razorpay.key.id}") String key,
             @Value("${razorpay.secret.key}") String secret) throws RazorpayException {
-        return new RazorpayClient(key, secret);
+        return new RazorpayClient("rzp_test_Q0WD3rgIED0ILF", "QPCrUPoccMX6APuhKgfhgO89");
     }
 }

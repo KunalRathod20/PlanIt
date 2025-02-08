@@ -31,6 +31,7 @@ public class Location {
 
     @OneToMany(mappedBy = "location", cascade = CascadeType.ALL)
     @JsonIgnore
+    
     private List<Event> events = new ArrayList<>();
 }
 

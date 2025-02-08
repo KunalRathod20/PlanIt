@@ -40,6 +40,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Payment processPayment(Payment payment) {
+    	System.out.println("PAYMENT "+payment);
         // ✅ Check if the event exists before saving the payment
         Optional<Event> event = eventRepository.findById(payment.getEvent().getId());
         if (event.isEmpty()) {
