@@ -1,7 +1,10 @@
 package com.planit.controller;
 
+import java.security.Principal;
+import java.util.Map;
 import java.util.Optional;
 
+import org.apache.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -9,8 +12,10 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,9 +40,12 @@ public class AuthController {
 
 	@Autowired
 	private JwtHelper jwtHelper;
+	
+	 @Autowired
+	    private PasswordEncoder passwordEncoder;
 
 	@Autowired
-	private UserService userService; // Assuming you have a UserService that handles user operations
+	private UserService userService; //  UserService that handles user operations
 
 	@PostMapping("/login")
 	public ResponseEntity<JwtResponse> login(@RequestBody JwtRequest jwtRequest) {
@@ -78,5 +86,48 @@ public class AuthController {
 		} catch (BadCredentialsException e) {
 			throw new BadCredentialsException("Invalid credentials");
 		}
+		
+		
+		
 	}
+	@PutMapping("/user/update-email")
+	public ResponseEntity<?> updateEmail(@RequestBody Map<String, String> request, Principal principal) {
+	    Optional<User> optionalUser = userService.getUserByEmail(principal.getName());
+	    if (!optionalUser.isPresent()) {
+	        return ResponseEntity.status(HttpStatus.SC_NOT_FOUND).body("User not found");
+	    }
+
+	    User user = optionalUser.get(); // Unwrap Optional
+	    String newEmail = request.get("email");
+
+	    if (userService.existsByEmail(newEmail)) {
+	        return ResponseEntity.status(HttpStatus.SC_BAD_REQUEST).body("Email already in use");
+	    }
+
+	    user.setEmail(newEmail);
+	    userService.saveUser(user);
+	    return ResponseEntity.ok("Email updated successfully");
+	}
+
+	@PutMapping("/user/update-password")
+	public ResponseEntity<?> updatePassword(@RequestBody Map<String, String> request, Principal principal) {
+	    Optional<User> optionalUser = userService.getUserByEmail(principal.getName());
+	    if (!optionalUser.isPresent()) {
+	        return ResponseEntity.status(HttpStatus.SC_NOT_FOUND).body("User not found");
+	    }
+
+	    User user = optionalUser.get(); // Unwrap Optional
+	    String currentPassword = request.get("currentPassword");
+	    String newPassword = request.get("newPassword");
+
+	    try {
+	        userService.updatePassword(user.getId(), currentPassword, newPassword);
+	        return ResponseEntity.ok("Password updated successfully");
+	    } catch (IllegalArgumentException e) {
+	        return ResponseEntity.status(HttpStatus.SC_BAD_REQUEST).body(e.getMessage());
+	    }
+	}
+
+
+
 }

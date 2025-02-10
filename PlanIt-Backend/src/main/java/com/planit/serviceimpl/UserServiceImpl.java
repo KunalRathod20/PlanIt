@@ -50,5 +50,51 @@ public class UserServiceImpl implements UserService {
      User user = getUserById(id);
      userRepository.delete(user);
  }
+ 
+ 
+//✅ Check if email exists
+ @Override
+ public boolean existsByEmail(String email) {
+     return userRepository.findByEmail(email).isPresent();
+ }
+
+ // ✅ Update Email
+ @Override
+ public User updateEmail(Long userId, String newEmail) {
+     User user = getUserById(userId);
+     
+     if (existsByEmail(newEmail)) {
+         throw new IllegalArgumentException("Email is already in use.");
+     }
+
+     user.setEmail(newEmail);
+     return userRepository.save(user);
+ }
+
+ // ✅ Update Password
+ @Override
+ public void updatePassword(Long userId, String currentPassword, String newPassword) {
+     User user = getUserById(userId);
+
+     if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+         throw new IllegalArgumentException("Current password is incorrect.");
+     }
+
+     user.setPassword(passwordEncoder.encode(newPassword));
+     userRepository.save(user);
+ }
+
+ // ✅ Save updated user
+ @Override
+ public void saveUser(User user) {
+     userRepository.save(user);
+ }
+ 
+ @Override
+ public boolean checkPassword(User user, String rawPassword) {
+     return passwordEncoder.matches(rawPassword, user.getPassword());
+ }
+
+ 
 }
 

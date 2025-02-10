@@ -77,18 +77,19 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Notifications & Announcements */}
         <div className="col-md-4 mt-4">
-          <div className="card admin-card shadow">
-            <div className="card-body text-center">
-              <h5 className="card-title mt-2">Send Notifications</h5>
-              <p>Send updates and announcements to users.</p>
-              <button className="btn btn-secondary w-100" onClick={() => navigate("/admin/notifications")}>
-                Send Notification
-              </button>
-            </div>
-          </div>
-        </div>
+  <div className="card admin-card shadow upcoming-feature">
+    <div className="card-body text-center">
+      <h5 className="card-title mt-2">Send Notifications</h5>
+      <p>Send updates and announcements to users.</p>
+      <button className="btn w-100" disabled>
+        Send Notification
+      </button>
+    </div>
+  </div>
+</div>
+
+
       </div>
     </div>
   );

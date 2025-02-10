@@ -18,6 +18,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("SELECT FUNCTION('DATE_FORMAT', e.date, '%Y-%m') AS month, COUNT(e) " +
            "FROM Event e GROUP BY month ORDER BY month ASC")
     List<Object[]> getEventTrends(); // Event trends
-    
+    List<Event> findByParticipantsId(Long userId);
+
     
 }

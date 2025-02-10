@@ -30,16 +30,34 @@ const AnalyticsReports = () => {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await api.get("/admin/analytics", {
+      // Fetch analytics data
+      const analyticsResponse = await api.get("/admin/analytics", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setAnalyticsData(response.data);
+  
+      // Fetch total payments separately
+      const paymentsResponse = await api.get("/payments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      // Calculate total payments
+      const totalPayments = paymentsResponse.data.reduce(
+        (sum, payment) => sum + payment.amount,
+        0
+      );
+  
+      // Set analytics data with total payments
+      setAnalyticsData({
+        ...analyticsResponse.data,
+        totalPayments,
+      });
     } catch (error) {
       console.error("Error fetching analytics", error);
     } finally {
       setLoading(false);
     }
   };
+  
 
   const fetchEventData = async () => {
     try {

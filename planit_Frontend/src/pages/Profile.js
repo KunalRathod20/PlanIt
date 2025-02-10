@@ -1,84 +1,157 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../api/axiosConfig"; // API instance
 
 const Profile = () => {
   const [userData, setUserData] = useState({
-    username: "",
     email: "",
-    password: "",
-    role: "", // Added role field to differentiate user/admin
+    role: "",
   });
 
+  const [passwords, setPasswords] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
-    console.log("User Data from localStorage:", user); // Debugging line
-
-    if (user && user.roleName) {
+    if (user && user.username) {
       setUserData({
-        username: user.username || "",
-        email: user.email || "",
-        password: "", // For security, don’t auto-fill password
-        role: user.roleName, // Store user/admin role
+        email: user.username,
+        role: user.roleName,
       });
     } else {
       navigate("/login");
     }
   }, [navigate]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setUserData({ ...userData, [name]: value });
+  const handleEmailChange = (e) => {
+    setUserData({ ...userData, email: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    localStorage.setItem("user", JSON.stringify(userData)); // Save updated user data to localStorage
-    alert("Profile updated successfully");
+  const handlePasswordChange = (e) => {
+    setPasswords({ ...passwords, [e.target.name]: e.target.value });
+  };
+
+  // Update Email
+  const updateEmail = async () => {
+    try {
+      setLoading(true);
+      const token = JSON.parse(localStorage.getItem("user"))?.jwtToken;
+      const response = await api.put(
+        "/auth/user/update-email",
+        { email: userData.email },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert("Email updated successfully!");
+      localStorage.setItem("user", JSON.stringify({ ...userData, jwtToken: token }));
+      setEditingEmail(false);
+    } catch (error) {
+      alert("Failed to update email.");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update Password
+  const updatePassword = async () => {
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      alert("New passwords do not match.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = JSON.parse(localStorage.getItem("user"))?.jwtToken;
+      await api.put(
+        "/auth/user/update-password",
+        {
+          currentPassword: passwords.currentPassword,
+          newPassword: passwords.newPassword,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert("Password updated successfully!");
+      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error) {
+      alert("Failed to update password.");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="container mt-5">
-      <h2>Profile ({userData.role})</h2> {/* Shows User or Admin */}
-      <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label htmlFor="username" className="form-label">Email</label>
-          <input
-            type="text"
-            className="form-control"
-            id="username"
-            name="username"
-            value={userData.username}
-            onChange={handleChange}
-            disabled={userData.role === "ADMIN"} // Admin cannot change username
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="email" className="form-label">Email</label>
+      <h2 className="text-center">Profile ({userData.role})</h2>
+
+      {/* User Info Section */}
+      <div className="card p-4 shadow mt-4">
+        <h4>User Information</h4>
+        <div className="d-flex align-items-center">
           <input
             type="email"
-            className="form-control"
-            id="email"
-            name="email"
+            className="form-control me-2"
             value={userData.email}
-            onChange={handleChange}
+            onChange={handleEmailChange}
+            disabled={!editingEmail}
           />
+          <button className="btn btn-warning" onClick={() => setEditingEmail(!editingEmail)}>
+            {editingEmail ? "Save" : "Edit"}
+          </button>
         </div>
+        {editingEmail && (
+          <button className="btn btn-primary mt-2" onClick={updateEmail} disabled={loading}>
+            Update Email
+          </button>
+        )}
+      </div>
+
+      {/* Reset Password Section */}
+      <div className="card p-4 shadow mt-4">
+        <h4>Reset Password</h4>
         <div className="mb-3">
-          <label htmlFor="password" className="form-label">New Password</label>
+          <label className="form-label">Current Password</label>
           <input
             type="password"
             className="form-control"
-            id="password"
-            name="password"
-            value={userData.password}
-            onChange={handleChange}
-            placeholder="Enter new password"
+            name="currentPassword"
+            value={passwords.currentPassword}
+            onChange={handlePasswordChange}
           />
         </div>
-        <button type="submit" className="btn btn-primary">Update Profile</button>
-      </form>
+        <div className="mb-3">
+          <label className="form-label">New Password</label>
+          <input
+            type="password"
+            className="form-control"
+            name="newPassword"
+            value={passwords.newPassword}
+            onChange={handlePasswordChange}
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Re-enter New Password</label>
+          <input
+            type="password"
+            className="form-control"
+            name="confirmPassword"
+            value={passwords.confirmPassword}
+            onChange={handlePasswordChange}
+          />
+        </div>
+        <button className="btn btn-danger" onClick={updatePassword} disabled={loading}>
+          Update Password
+        </button>
+      </div>
     </div>
   );
 };

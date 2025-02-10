@@ -3,9 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/axiosConfig"; // Assuming axiosConfig exports the base URL
 
 const UpdateExpensePage = () => {
-  const { id } = useParams(); // Expense ID from URL
+  const { id: eventId } = useParams(); // Renaming id to eventId for clarity
   const [expense, setExpense] = useState({ name: "", amount: "", description: "" });
-  const [loading, setLoading] = useState(true); // Loading state
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const token = JSON.parse(localStorage.getItem("user"))?.jwtToken;
 
@@ -14,14 +14,13 @@ const UpdateExpensePage = () => {
     const fetchExpense = async () => {
       if (!token) return; // Prevent API call if token is missing
       try {
-        const response = await api.get(`/expenses/event/${id}`, {
+        const response = await api.get(`/expenses/event/${eventId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // Log the response to check the data
         console.log("Fetched Expense:", response.data);
 
-        if (response.data) {
+        if (response.data.length > 0) {
           setExpense(response.data[0]); // Populate form with existing expense data
         } else {
           console.error("Expense data not found");
@@ -30,12 +29,12 @@ const UpdateExpensePage = () => {
         console.error("Error fetching expense", error);
         alert("Error fetching expense details.");
       } finally {
-        setLoading(false); // Set loading to false after the request completes
+        setLoading(false);
       }
     };
 
     fetchExpense();
-  }, [id]);
+  }, [eventId, token]);
 
   // Handle input changes
   const handleChange = (e) => {
@@ -54,12 +53,12 @@ const UpdateExpensePage = () => {
     }
 
     try {
-      const response = await api.put(`/expenses/${id}`, expense, {
+      await api.put(`/expenses/${expense.id}`, expense, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       alert("Expense updated successfully!");
-      navigate("/my-events"); // Redirect back to My Events page
+      navigate("/my-events");
     } catch (error) {
       console.error("Error updating expense", error);
       alert("Failed to update expense.");

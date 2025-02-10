@@ -14,4 +14,9 @@ public interface PaymentService {
     List<Payment> getPaymentsByEventId(Long eventId);
     Order createRazorpayOrder(int amount) throws Exception;
     boolean verifyPayment( String paymentId, String razorpaySignature);
+    Payment getPaymentDetails(Long userId, Long eventId);
+    
+    List<Payment> getAllPayments();
+    boolean processRefund(Long paymentId);
+
 }

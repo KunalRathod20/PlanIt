@@ -13,5 +13,6 @@ public interface EventService {
     Event addUserToEvent(Long eventId, Long userId);
     Event updateEvent(Long id, Event updatedEvent);
     List<User> getParticipantsByEvent(Long eventId);
+    List<Event> getEnrolledEvents(Long userId);
 
 }

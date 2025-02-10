@@ -8,10 +8,8 @@ const EventDetails = () => {
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [expenses, setExpenses] = useState([]); // State for expenses
-  const [isJoined, setIsJoined] = useState(false); // Track if user joined
   const user = JSON.parse(localStorage.getItem("user")); // Get logged-in user
   const token = user?.jwtToken;
-  const userId = user?.userId; // Ensure userId is retrieved
 
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -22,25 +20,6 @@ const EventDetails = () => {
         setEvent(response.data);
       } catch (error) {
         console.error("Error fetching event details:", error);
-      }
-    };
-
-    const fetchParticipants = async () => {
-      try {
-        const response = await api.get(`/events/${id}/participants`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        console.log("Participants Response:", response.data);
-
-        // Check if the logged-in user is in the participants list
-        const userAlreadyJoined = response.data.some(
-          (participant) => participant.id === userId
-        );
-
-        setIsJoined(userAlreadyJoined);
-      } catch (error) {
-        console.error("Error fetching participants:", error);
       }
     };
 
@@ -56,17 +35,11 @@ const EventDetails = () => {
     };
 
     fetchEventDetails();
-    fetchParticipants();
     fetchExpenses();
-  }, [id, token, userId]);
+  }, [id, token]);
 
   const handleJoinEvent = () => {
-    if (isJoined) {
-      alert("You have already joined this event.");
-      return;
-    }
-
-    // Redirect to the payment page
+    // Allow user to navigate to payment for all events
     navigate(`/payment/${id}`);
   };
 
@@ -101,12 +74,10 @@ const EventDetails = () => {
         </p>
         <p><strong>Description:</strong> {event.description}</p>
 
-        {/* Show 'Join Event' button if user hasn't joined, otherwise 'Joined' */}
+        {/* 'Join Event' button - Always enabled */}
         <div className="d-flex justify-content-center">
-          <button className={`btn ${isJoined ? "btn-secondary" : "btn-primary"}`} 
-            onClick={handleJoinEvent} 
-            disabled={isJoined}>
-            {isJoined ? "Already Joined" : "Join Event"}
+          <button className="btn btn-primary" onClick={handleJoinEvent}>
+            Join Event
           </button>
         </div>
       </div>

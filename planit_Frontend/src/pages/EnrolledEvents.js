@@ -2,52 +2,39 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axiosConfig";
 
-const UserDashboard = () => {
-  const [events, setEvents] = useState([]);
+const EnrolledEvents = () => {
+  const [enrolledEvents, setEnrolledEvents] = useState([]);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
+  const token = user?.jwtToken;
+  const userId = user?.userId;
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchEnrolledEvents = async () => {
       try {
-        const token = user?.jwtToken;
-        const response = await api.get("/events", {
+        const response = await api.get(`/events/enrolled/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setEvents(response.data);
+        setEnrolledEvents(response.data);
       } catch (error) {
-        console.error("Error fetching events", error);
+        console.error("Error fetching enrolled events", error);
       }
     };
 
-    fetchEvents();
-  }, []);
+    if (userId) {
+      fetchEnrolledEvents();
+    }
+  }, [userId, token]);
 
   return (
     <div className="container mt-5">
-      <h2 className="mb-4">Your Events</h2>
+      <h2 className="mb-4">Enrolled Events</h2>
 
-      {/* Add Event Button */}
-      <button className="btn btn-success mb-4" onClick={() => navigate("/create-event")}>
-        + Add Event
-      </button>
-
-      {/* My Events Button */}
-      <button className="btn btn-info mb-4 ms-2" onClick={() => navigate("/my-events")}>
-        My Events
-      </button>
-
-      {/* New Enrolled Events Button */}
-      <button className="btn btn-warning mb-4 ms-2" onClick={() => navigate("/enrolled-events")}>
-        Enrolled Events
-      </button>
-
-      {/* Display Events as Bootstrap Cards */}
-      <div className="row">
-        {events.length === 0 ? (
-          <p>No events found.</p>
-        ) : (
-          events.map((event) => (
+      {enrolledEvents.length === 0 ? (
+        <p>You haven't enrolled in any events yet.</p>
+      ) : (
+        <div className="row">
+          {enrolledEvents.map((event) => (
             <div key={event.id} className="col-md-4">
               <div
                 className="card mb-4 shadow-sm"
@@ -62,11 +49,11 @@ const UserDashboard = () => {
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-export default UserDashboard;
+export default EnrolledEvents;

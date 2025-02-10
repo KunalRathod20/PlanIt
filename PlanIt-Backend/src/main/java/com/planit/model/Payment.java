@@ -21,8 +21,11 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private double amount;
-    private String status; // Pending, Completed
+    private String orderStatus;
+    private String phno;
+    private String razorpayOrderId;
 
+    
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

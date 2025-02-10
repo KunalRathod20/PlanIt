@@ -111,6 +111,7 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     public Expense updateExpense(Long expenseId, Expense updatedExpense) {
+    //	System.out.println("Updating expense with ID: " + expenseId);
         // Fetch the existing expense and update details
         Expense existingExpense = expenseRepository.findById(expenseId)
                 .orElseThrow(() -> new IllegalArgumentException("Expense not found"));

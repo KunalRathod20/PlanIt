@@ -153,7 +153,11 @@ public class EventServiceImpl implements EventService {
         // Return the participants list from the event
         return event.getParticipants();  // Correct method to fetch participants
     }
-    
+
+
+    public List<Event> getEnrolledEvents(Long userId) {
+        return eventRepository.findByParticipantsId(userId);
+    }
     
     
     

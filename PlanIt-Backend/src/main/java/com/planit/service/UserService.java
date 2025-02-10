@@ -11,4 +11,13 @@ public interface UserService {
     Optional<User> getUserByEmail(String email);
     List<User> getAllUsers();
     void deleteUser(Long id);
+    
+    
+    
+    boolean existsByEmail(String email);
+    User updateEmail(Long userId, String newEmail);
+    void updatePassword(Long userId, String currentPassword, String newPassword);
+    void saveUser(User user);
+    boolean checkPassword(User user, String rawPassword);
+
 }

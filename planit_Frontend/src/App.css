@@ -108,3 +108,65 @@ footer .footer-bottom p {
 .conwidth{
   width: 100% !important ;
 }
+
+/* Upcoming Feature Styling */
+.upcoming-feature {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef); /* Soft gradient */
+  border: 2px dashed #6c757d; /* Dashed border */
+  border-radius: 10px; /* Smooth rounded corners */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  opacity: 0.8; /* Light fade effect */
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.upcoming-feature:hover {
+  transform: scale(1.02); /* Slight zoom effect */
+  opacity: 1; /* Full visibility on hover */
+}
+
+.upcoming-feature .card-body {
+  position: relative;
+  text-align: center;
+  padding: 20px;
+}
+
+.upcoming-feature .card-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #495057; /* Dark gray */
+  position: relative;
+}
+
+.upcoming-feature p {
+  font-size: 1rem;
+  color: #6c757d; /* Muted gray */
+}
+
+.upcoming-feature .btn {
+  background: #adb5bd; /* Muted button */
+  color: white;
+  cursor: not-allowed;
+  padding: 10px 20px;
+  font-weight: bold;
+  transition: background 0.3s ease-in-out;
+}
+
+.upcoming-feature .btn:hover {
+  background: #6c757d; /* Darker gray */
+}
+
+/* "Coming Soon" Badge */
+.upcoming-feature::before {
+  content: "Coming Soon";
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  background: #ffc107; /* Yellow badge */
+  color: #212529;
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+

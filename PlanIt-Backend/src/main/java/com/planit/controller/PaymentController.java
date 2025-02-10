@@ -1,29 +1,27 @@
 package com.planit.controller;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.planit.exception.ResourceNotFoundException;
 import com.planit.model.Event;
 import com.planit.model.Payment;
 import com.planit.model.User;
 import com.planit.repository.EventRepository;
 import com.planit.repository.UserRepository;
-import com.planit.service.PaymentService;
-import com.razorpay.Order;
+import com.planit.serviceimpl.PaymentServiceImpl;
+import com.razorpay.RazorpayException;
 
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentController {
 
-    
     @Autowired
-    private final PaymentService paymentService;
+    private PaymentServiceImpl paymentService;
 
     @Autowired
     private UserRepository userRepository;
@@ -31,85 +29,117 @@ public class PaymentController {
     @Autowired
     private EventRepository eventRepository;
 
-    public PaymentController(PaymentService paymentService) {
-        this.paymentService = paymentService;
-    }
-
-    @PostMapping("/process")
-    public ResponseEntity<Payment> processPayment(@RequestBody Payment payment) {
-        Payment savedPayment = paymentService.processPayment(payment);
-        return ResponseEntity.ok(savedPayment);
-    }
-
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Payment>> getPaymentsByUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(paymentService.getPaymentsByUserId(userId));
-    }
-
-    @GetMapping("/event/{eventId}")
-    public ResponseEntity<List<Payment>> getPaymentsByEvent(@PathVariable Long eventId) {
-        return ResponseEntity.ok(paymentService.getPaymentsByEventId(eventId));
-    }
-
     @PostMapping("/create-order")
-    public ResponseEntity<Map<String, Object>> createOrder(@RequestBody Map<String, Object> requestData) {
+    public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> orderData) {
         try {
-            int amount = (int) requestData.get("amount");
-            Order order = paymentService.createRazorpayOrder(amount);
+            System.out.println("Received Order Request: " + orderData);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("id", order.get("id"));
-            response.put("amount", order.get("amount"));
-            response.put("currency", order.get("currency"));
+            // Extract userId, eventId, amount, and phone number
+            Long userId = orderData.containsKey("userId") ? Long.parseLong(orderData.get("userId").toString()) : null;
+            Long eventId = orderData.containsKey("eventId") ? Long.parseLong(orderData.get("eventId").toString()) : null;
+            Double amount = orderData.containsKey("amount") ? Double.parseDouble(orderData.get("amount").toString()) : 0.0;
+            String phoneNumber = orderData.containsKey("phno") ? orderData.get("phno").toString() : "";
 
-            return ResponseEntity.ok(response);
+            // Validate userId and eventId
+            if (userId == null || eventId == null) {
+                return ResponseEntity.badRequest().body("Missing userId or eventId in request!");
+            }
+
+            // Fetch user and event from DB
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            Event event = eventRepository.findById(eventId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+
+            // Create payment order
+            Payment payment = new Payment();
+            payment.setUser(user);
+            payment.setEvent(event);
+            payment.setAmount(amount);
+            payment.setPhno(phoneNumber);
+
+            Payment createdOrder = paymentService.createOrder(payment);
+            return ResponseEntity.ok(createdOrder);
+
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body("❌ Invalid number format in request data!");
+        } catch (RazorpayException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error creating Razorpay order: " + e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Collections.singletonMap("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Unexpected error: " + e.getMessage());
         }
     }
 
-    @PostMapping("/verify")
-    public ResponseEntity<Map<String, String>> verifyPayment(@RequestBody Map<String, String> paymentDetails) {
+    @PostMapping("/handle-payment-callback")
+    public ResponseEntity<String> handlePaymentCallback(@RequestBody Map<String, String> payload) {
         try {
-            // Extracting payment details from request body
-            String paymentId = paymentDetails.get("paymentId");
-            String razorpaySignature = paymentDetails.get("razorpaySignature");
+        	System.out.println("Payload "+payload);
+            paymentService.updateOrder(payload);
+            return ResponseEntity.ok("Payment updated successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("❌ " + e.getMessage());
+        }
+    }
 
-            // Verify payment using the service
-            boolean isVerified = paymentService.verifyPayment(paymentId, razorpaySignature);
+    @GetMapping("/verify-payment")
+    public ResponseEntity<Boolean> verifyPurchase(@RequestParam("userId") Long userId,
+                                                  @RequestParam("eventId") Long eventId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
-            if (isVerified) {
-                // Retrieve the additional data needed to store the payment
-                Long userId = Long.parseLong(paymentDetails.get("userId"));
-                Long eventId = Long.parseLong(paymentDetails.get("eventId"));
-                double amount = Double.parseDouble(paymentDetails.get("amount"));
+        boolean hasAccess = paymentService.hasUserPurchasedModule(user, event);
+        return ResponseEntity.ok(hasAccess);
+    }
+    
+    
+    @GetMapping("/details")
+    public ResponseEntity<?> getPaymentDetails(@RequestParam("userId") Long userId,
+                                               @RequestParam("eventId") Long eventId) {
+        try {
+            Payment payment = paymentService.getPaymentDetails(userId, eventId);
 
-                // Fetch the user and event to associate with payment
-                User user = userRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("User not found"));
-                Event event = eventRepository.findById(eventId)
-                        .orElseThrow(() -> new RuntimeException("Event not found"));
+            if (payment == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Payment details not found for the given user and event.");
+            }
 
-                // Create and save payment record
-                Payment payment = new Payment();
-                payment.setAmount(amount);
-                payment.setStatus("Completed");
-                payment.setUser(user);
-                payment.setEvent(event);
+            return ResponseEntity.ok(payment);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error fetching payment details: " + e.getMessage());
+        }
+    }
+    
+    
+    @GetMapping
+    public ResponseEntity<?> getAllPayments() {
+        try {
+            return ResponseEntity.ok(paymentService.getAllPayments());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error fetching payments: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/refund/{paymentId}")
+    public ResponseEntity<?> refundPayment(@PathVariable Long paymentId) {
+        try {
+            boolean isRefunded = paymentService.processRefund(paymentId);
 
-                paymentService.processPayment(payment); // Save payment to database
-
-                // Return success response
-                return ResponseEntity.ok(Collections.singletonMap("status", "Completed"));
+            if (isRefunded) {
+                return ResponseEntity.ok("Refund processed successfully.");
             } else {
-                // Return failure response if verification fails
-                return ResponseEntity.status(400).body(Collections.singletonMap("status", "Failed"));
+                return ResponseEntity.badRequest().body("Refund failed or not applicable.");
             }
         } catch (Exception e) {
-            // Return error response in case of an exception
-            return ResponseEntity.status(500).body(Collections.singletonMap("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error processing refund: " + e.getMessage());
         }
     }
 
-
+ 
 }

@@ -1,20 +1,34 @@
 package com.planit.repository;
 
-import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.planit.model.Event;
 import com.planit.model.Payment;
+import com.planit.model.User;
+
+import jakarta.transaction.Transactional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
-    List<Payment> findByUserId(Long userId);
-    List<Payment> findByEventId(Long eventId);
+    
+    Payment findByRazorpayOrderId(String orderId);
+
+    // ✅ Fix: Change 'Module' to 'Event'
+    boolean existsByUserAndEventAndOrderStatus(User user, Event event, String orderStatus);
+
+    @Transactional
     void deleteByEventId(Long eventId);
 
-    // Get total revenue (without using payment.date)
-    @Query("SELECT SUM(p.amount) FROM Payment p")
-    Double getTotalRevenue();
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.orderStatus = :orderStatus")
+    Double getTotalRevenue(@Param("orderStatus") String orderStatus);
+    
+    Optional<Payment> findByUserIdAndEventId(Long userId, Long eventId);
+    Optional<Payment> findById(Long id);
+
+
 }

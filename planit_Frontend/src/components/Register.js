@@ -7,7 +7,7 @@ const Register = () => {
     username: "",
     email: "",
     password: "",
-    role: { id: 1 }, // ✅ Default role is User (id: 1)
+    role: { id: 1 }, //  Default role is User (id: 1)
   });
 
   const navigate = useNavigate();

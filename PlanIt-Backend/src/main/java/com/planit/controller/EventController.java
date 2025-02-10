@@ -43,6 +43,13 @@ public class EventController {
     public ResponseEntity<List<Event>> getAllEvents() {
         return ResponseEntity.ok(eventService.getAllEvents());
     }
+    
+    @GetMapping("/enrolled/{userId}")
+    public ResponseEntity<List<Event>> getEnrolledEvents(@PathVariable Long userId) {
+        List<Event> enrolledEvents = eventService.getEnrolledEvents(userId);
+        return ResponseEntity.ok(enrolledEvents);
+    }
+
 
 //    @DeleteMapping("/{id}")
 //    public ResponseEntity<String> deleteEvent(@PathVariable Long id) {

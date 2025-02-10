@@ -1,94 +1,97 @@
 package com.planit.serviceimpl;
 
-import java.security.Key;
-import java.util.Base64;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import java.util.Map;
 
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.planit.model.Event;
 import com.planit.model.Payment;
-import com.planit.repository.EventRepository;
+import com.planit.model.User;
 import com.planit.repository.PaymentRepository;
 import com.planit.service.PaymentService;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
-import com.razorpay.Utils;
+import com.razorpay.RazorpayException;
 @Service
-public class PaymentServiceImpl implements PaymentService {
+public class PaymentServiceImpl{
 
-    @Value("${razorpay.key.id}")
-    private String razorpayKeyId;
+    @Autowired
+    private PaymentRepository paymentRepository;
 
-    @Value("${razorpay.secret.key}")
-    private String razorpayKeySecret;
+    @Autowired
+    private RazorpayClient client;
 
-    private final PaymentRepository paymentRepository;
-    private final EventRepository eventRepository; // Ensure event exists before payment
-
-    public PaymentServiceImpl(PaymentRepository paymentRepository, EventRepository eventRepository) {
-        this.paymentRepository = paymentRepository;
-        this.eventRepository = eventRepository;
-    }
-
-    @Override
-    public Payment processPayment(Payment payment) {
-    	System.out.println("PAYMENT "+payment);
-        // ✅ Check if the event exists before saving the payment
-        Optional<Event> event = eventRepository.findById(payment.getEvent().getId());
-        if (event.isEmpty()) {
-            throw new RuntimeException("Event not found! Cannot process payment.");
+    @Transactional
+    public Payment createOrder(Payment order) throws RazorpayException {
+        if (order.getUser() == null || order.getEvent() == null) {
+            throw new IllegalArgumentException("User and Module cannot be null.");
         }
-        return paymentRepository.save(payment);
-    }
 
-    @Override
-    public List<Payment> getPaymentsByUserId(Long userId) {
-        return paymentRepository.findByUserId(userId);
-    }
-
-    @Override
-    public List<Payment> getPaymentsByEventId(Long eventId) {
-        return paymentRepository.findByEventId(eventId);
-    }
-
-    @Override
-    public Order createRazorpayOrder(int amount) throws Exception {
-        RazorpayClient razorpay = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
+        // Debug logs
+        System.out.println("Creating order for User: " + order.getUser().getId() + " and Module: " + order.getEvent().getId());
 
         JSONObject orderRequest = new JSONObject();
-        orderRequest.put("amount", amount * 100); // Convert to paise
+        orderRequest.put("amount", order.getAmount() *100);
         orderRequest.put("currency", "INR");
-        orderRequest.put("receipt", "txn_" + System.currentTimeMillis());
-        orderRequest.put("payment_capture", 1); // Auto-capture payment
+        orderRequest.put("receipt", "receipt_" + System.currentTimeMillis());
 
-        return razorpay.orders.create(orderRequest);
+        Order razorpayOrder = client.orders.create(orderRequest);
+        System.out.println("Order created with Razorpay Order ID: " + razorpayOrder.get("id"));
+
+        order.setRazorpayOrderId(razorpayOrder.get("id"));
+        order.setOrderStatus("CREATED");
+
+        Payment savedOrder = paymentRepository.save(order);
+        System.out.println("Order saved to database: " + savedOrder.getId());
+
+        return savedOrder;
     }
 
+    @Transactional
+    public void updateOrder(Map<String, String> payload) {
+        String razorpayOrderId = payload.get("razorpay_order_id");
+        Payment order = paymentRepository.findByRazorpayOrderId(razorpayOrderId);
 
-
-    @Override
-    public boolean verifyPayment(String paymentId, String razorpaySignature) {
-        try {
-            JSONObject paymentData = new JSONObject();
-            paymentData.put("razorpay_payment_id", paymentId);
-            paymentData.put("razorpay_signature", razorpaySignature);
-
-            String secret = Objects.requireNonNull(razorpayKeySecret, "Razorpay Secret Key is missing!");
-            Utils.verifyPaymentSignature(paymentData, secret);
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+        if (order == null) {
+            throw new IllegalArgumentException("Order not found.");
         }
+
+        order.setOrderStatus("PAYMENT_COMPLETED");
+        paymentRepository.save(order);
+    }
+
+    public boolean hasUserPurchasedModule(User user, Event event) {
+        return paymentRepository.existsByUserAndEventAndOrderStatus(user, event, "PAYMENT_COMPLETED");
+    }
+    
+    public Payment getPaymentDetails(Long userId, Long eventId) {
+        return paymentRepository.findByUserIdAndEventId(userId, eventId)
+                .orElse(null);
+    }
+    
+    public List<Payment> getAllPayments() {
+        return paymentRepository.findAll();
     }
 
     
+    @Transactional
+    public boolean processRefund(Long paymentId) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found."));
+
+        if (!"PAYMENT_COMPLETED".equals(payment.getOrderStatus())) {
+            return false; // Only completed payments can be refunded
+        }
+
+        // Update payment status to REFUNDED
+        payment.setOrderStatus("REFUNDED");
+        paymentRepository.save(payment);
+        return true;
+    }
+
 }
+
